@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background-color: #0D1310;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background-color: #B33027;
+  color: #F5F1E7;
+}
+
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid #D9A441;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.pitch-texture {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(245, 241, 231, 0.02) 0px,
+    rgba(245, 241, 231, 0.02) 1px,
+    transparent 1px,
+    transparent 34px
+  );
+}
