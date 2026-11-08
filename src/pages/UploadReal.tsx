@@ -85,7 +85,8 @@ export default function UploadReal() {
       {status === 'uploading' && <p className="mt-4 font-mono text-sm text-slateg-400">Uploading…</p>}
       {status === 'processing' && (
         <p className="mt-4 font-mono text-sm text-amber-500">
-          Processing: {session?.processingStageLabel ?? 'starting'}…
+          Processing: {session?.processingStageLabel ?? 'starting'}
+          {typeof session?.processingProgress === 'number' ? ` (${session.processingProgress}%)` : ''}…
         </p>
       )}
       {status === 'error' && (
@@ -114,7 +115,7 @@ export default function UploadReal() {
             <div className="rounded-sm border border-turf-700 bg-turf-900 p-5">
               <div className="font-mono text-xs uppercase tracking-wide text-slateg-400">Ball tracking (pixel space)</div>
               <div className="mt-2 font-mono text-sm text-chalk-100">
-                Detected in {session.trackingPreview.framesDetected} / {session.trackingPreview.framesTotal} frames
+                Ball found in {session.trackingPreview.framesDetected} of {session.trackingPreview.framesTotal} checked frames
                 ({session.trackingPreview.detectionRatePct}%)
               </div>
               <p className="mt-2 font-body text-sm text-chalk-300">{session.trackingPreview.note}</p>
