@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { AlertTriangle, UploadCloud } from 'lucide-react';
 import { uploadVideo, getSessionStatus, isBackendConfigured } from '../lib/api';
+import { CalibrationPanel } from '../components/CalibrationPanel';
 
 export default function UploadReal() {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'error'>('idle');
@@ -117,6 +118,21 @@ export default function UploadReal() {
                 ({session.trackingPreview.detectionRatePct}%)
               </div>
               <p className="mt-2 font-body text-sm text-chalk-300">{session.trackingPreview.note}</p>
+            </div>
+          )}
+
+          {session.trackingPreview?.framesDetected > 0 && !session.calibratedResult && (
+            <CalibrationPanel sessionId={session.id} onDone={updated => setSession(updated)} />
+          )}
+
+          {session.calibratedResult && (
+            <div className="rounded-sm border border-turf-700 bg-turf-900 p-5">
+              <div className="font-mono text-xs uppercase tracking-wide text-slateg-400">Calibrated result</div>
+              <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-sm text-chalk-100">
+                <div>Line: {session.calibratedResult.lineM}m from centreline</div>
+                <div>Length: {session.calibratedResult.lengthM}m from batter stumps</div>
+              </div>
+              <p className="mt-2 font-body text-sm text-chalk-300">{session.calibratedResult.note}</p>
             </div>
           )}
 

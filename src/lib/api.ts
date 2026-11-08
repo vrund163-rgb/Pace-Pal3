@@ -26,3 +26,26 @@ export async function getSessionStatus(sessionId: string): Promise<any> {
   if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${await res.text()}`);
   return res.json();
 }
+
+export function getFrameUrl(sessionId: string): string {
+  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
+  return `${API_BASE_URL}/api/sessions/${sessionId}/frame`;
+}
+
+export interface CalibrationPoints {
+  bowlerLeft: [number, number];
+  bowlerRight: [number, number];
+  batterLeft: [number, number];
+  batterRight: [number, number];
+}
+
+export async function submitCalibration(sessionId: string, points: CalibrationPoints): Promise<any> {
+  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/calibrate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(points),
+  });
+  if (!res.ok) throw new Error(`Calibration failed: ${res.status} ${await res.text()}`);
+  return res.json();
+}
