@@ -2,11 +2,13 @@ import { useState, useRef } from 'react';
 import { AlertTriangle, UploadCloud } from 'lucide-react';
 import { uploadVideo, getSessionStatus, isBackendConfigured } from '../lib/api';
 import { CalibrationPanel } from '../components/CalibrationPanel';
+import { TrackOverlay } from '../components/TrackOverlay';
 
 export default function UploadReal() {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'error'>('idle');
   const [session, setSession] = useState<any>(null);
   const [error, setError] = useState('');
+  const [recalibrating, setRecalibrating] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
@@ -122,18 +124,48 @@ export default function UploadReal() {
             </div>
           )}
 
-          {session.trackingPreview?.framesDetected > 0 && !session.calibratedResult && (
-            <CalibrationPanel sessionId={session.id} onDone={updated => setSession(updated)} />
+          {session.trackingPreview?.framesDetected > 0 && (
+            <TrackOverlay
+              sessionId={session.id}
+              trajectory={session.trackingPreview.trajectory}
+              homography={session.calibration?.homography ?? null}
+              calibratedResult={session.calibratedResult ?? null}
+            />
+          )}
+
+          {session.trackingPreview?.framesDetected > 0 && (!session.calibratedResult || recalibrating) && (
+            <CalibrationPanel
+              sessionId={session.id}
+              onDone={updated => { setSession(updated); setRecalibrating(false); }}
+            />
           )}
 
           {session.calibratedResult && (
             <div className="rounded-sm border border-turf-700 bg-turf-900 p-5">
               <div className="font-mono text-xs uppercase tracking-wide text-slateg-400">Calibrated result</div>
-              <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-sm text-chalk-100">
-                <div>Line: {session.calibratedResult.lineM}m from centreline</div>
-                <div>Length: {session.calibratedResult.lengthM}m from batter stumps</div>
+              {session.calibratedResult.lineM != null ? (
+                <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-sm text-chalk-100">
+                  <div>Line: {session.calibratedResult.lineM} m from centreline</div>
+                  <div>Length: {session.calibratedResult.lengthM} m from batter stumps</div>
+                </div>
+              ) : (
+                <div className="mt-2 font-mono text-sm text-amber-500">Bounce not reliably found — no line or length shown.</div>
+              )}
+              <div className="mt-1 font-mono text-xs text-slateg-400">
+                Calibrated from: {session.calibratedResult.calibrationMode === 'stumps' ? 'stumps (less accurate)' : 'crease corners'}
               </div>
+              {session.calibratedResult.bounceConfidence === 'weak' && (
+                <div className="mt-2 font-mono text-xs text-amber-500">Low confidence — treat these numbers with caution.</div>
+              )}
               <p className="mt-2 font-body text-sm text-chalk-300">{session.calibratedResult.note}</p>
+              {!recalibrating && (
+                <button
+                  onClick={() => setRecalibrating(true)}
+                  className="mt-3 font-mono text-xs text-slateg-400 underline hover:text-chalk-300"
+                >
+                  Recalibrate (re-click the 4 points)
+                </button>
+              )}
             </div>
           )}
 

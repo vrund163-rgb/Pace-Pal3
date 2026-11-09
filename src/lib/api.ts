@@ -33,6 +33,7 @@ export function getFrameUrl(sessionId: string): string {
 }
 
 export interface CalibrationPoints {
+  mode: 'creases' | 'stumps';
   bowlerLeft: [number, number];
   bowlerRight: [number, number];
   batterLeft: [number, number];
