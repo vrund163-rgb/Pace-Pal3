@@ -61,7 +61,7 @@ export default function UploadReal() {
       <h1 className="font-display text-4xl font-semibold text-chalk-100">Analyze real video</h1>
       <p className="mt-2 font-body text-chalk-300">
         Upload a real clip. This calls the actual backend — metadata, quality, and ball tracking are
-        real measurements, not sample data. Calibration and full delivery analysis aren't implemented yet.
+        real measurements, not sample data. After tracking, you can calibrate to get line and length. Pace (km/h) isn't available from a single camera.
       </p>
 
       <div className="mt-6 rounded-sm border border-dashed border-turf-600 bg-turf-900 p-8 text-center">
