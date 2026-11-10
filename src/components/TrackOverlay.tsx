@@ -42,7 +42,7 @@ export function TrackOverlay({
       n += 1;
       setShown(n);
       if (n >= pts.length && timer.current) window.clearInterval(timer.current);
-    }, 160);
+    }, Math.max(12, Math.min(160, 4000 / Math.max(pts.length, 1))));
   }
 
   const W = size?.w ?? 1;
@@ -120,7 +120,7 @@ export function TrackOverlay({
           <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full pointer-events-none">
             {pitchPolygon && (
               <>
-                <polygon points={pitchPolygon} fill="#4C7A3F" fillOpacity={0.12} stroke="#4C7A3F" strokeWidth={W * 0.002} />
+                <polygon points={pitchPolygon} fill="#8BD17C" fillOpacity={0.10} stroke="#8BD17C" strokeWidth={W * 0.004} />
                 {centreLine && (
                   <line x1={centreLine[0]} y1={centreLine[1]} x2={centreLine[2]} y2={centreLine[3]}
                     stroke="#DAD4C4" strokeOpacity={0.5} strokeWidth={W * 0.0015} strokeDasharray={`${W * 0.008} ${W * 0.008}`} />

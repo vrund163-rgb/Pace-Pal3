@@ -27,9 +27,22 @@ export async function getSessionStatus(sessionId: string): Promise<any> {
   return res.json();
 }
 
-export function getFrameUrl(sessionId: string): string {
+export function getFrameUrl(sessionId: string, index = 0): string {
   if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
-  return `${API_BASE_URL}/api/sessions/${sessionId}/frame`;
+  return `${API_BASE_URL}/api/sessions/${sessionId}/frame?index=${index}`;
+}
+
+export async function trackFromPoint(
+  sessionId: string,
+  req: { frame: number; x: number; y: number; direction: 'both' | 'forward' | 'backward' },
+): Promise<void> {
+  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/track-from-point`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error(`Tracking request failed: ${res.status} ${await res.text()}`);
 }
 
 export interface CalibrationPoints {

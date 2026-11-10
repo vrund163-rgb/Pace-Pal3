@@ -3,12 +3,14 @@ import { AlertTriangle, UploadCloud } from 'lucide-react';
 import { uploadVideo, getSessionStatus, isBackendConfigured } from '../lib/api';
 import { CalibrationPanel } from '../components/CalibrationPanel';
 import { TrackOverlay } from '../components/TrackOverlay';
+import { SeedPicker } from '../components/SeedPicker';
 
 export default function UploadReal() {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'error'>('idle');
   const [session, setSession] = useState<any>(null);
   const [error, setError] = useState('');
   const [recalibrating, setRecalibrating] = useState(false);
+  const [showSeed, setShowSeed] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
@@ -122,6 +124,35 @@ export default function UploadReal() {
               </div>
               <p className="mt-2 font-body text-sm text-chalk-300">{session.trackingPreview.note}</p>
             </div>
+          )}
+
+          {session.trackingPreview && (session.trackingPreview.framesDetected === 0 || showSeed) && (
+            <SeedPicker
+              sessionId={session.id}
+              frameCount={session.videoQuality?.frameCount ?? 0}
+              fps={session.videoQuality?.fps ?? 0}
+              intro={
+                session.trackingPreview.framesDetected === 0
+                  ? "The automatic detector couldn't find the ball in this clip. That's common for a small, fast cricket ball. You can show it where the ball is and it will follow it from there."
+                  : 'Re-pick the ball on a frame where it is clearly visible. This replaces the current tracked path.'
+              }
+              onStarted={() => {
+                setShowSeed(false);
+                setRecalibrating(false);
+                setStatus('processing');
+                setSession((prev: any) => ({ ...prev, status: 'processing', processingStageLabel: 'Tracking from your click', processingProgress: 0 }));
+                poll(session.id);
+              }}
+            />
+          )}
+
+          {session.trackingPreview && session.trackingPreview.framesDetected > 0 && !showSeed && (
+            <button
+              onClick={() => setShowSeed(true)}
+              className="font-mono text-xs text-slateg-400 underline hover:text-chalk-300"
+            >
+              Path wrong or ball missed? Click the ball yourself
+            </button>
           )}
 
           {session.trackingPreview?.framesDetected > 0 && (
