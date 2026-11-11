@@ -56,7 +56,7 @@ export function CalibrationPanel({ sessionId, onDone }: { sessionId: string; onD
       <div className="font-mono text-xs uppercase tracking-wide text-slateg-400">Calibrate</div>
       <p className="mt-1 font-body text-sm text-chalk-300">
         Click 4 points on the frame below, in order. This lets Pace Pal convert pixel positions into real metres
-        for line and length (pace still isn&apos;t possible from one camera).
+        for line and length, and a rough pace estimate.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">

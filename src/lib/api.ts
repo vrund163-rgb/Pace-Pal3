@@ -63,3 +63,25 @@ export async function submitCalibration(sessionId: string, points: CalibrationPo
   if (!res.ok) throw new Error(`Calibration failed: ${res.status} ${await res.text()}`);
   return res.json();
 }
+
+export async function setBounce(sessionId: string, body: { frame: number; x: number; y: number } | { clear: true }): Promise<any> {
+  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/set-bounce`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Could not set the bounce: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+export async function trimPath(sessionId: string, startFrame: number, endFrame: number): Promise<any> {
+  if (!API_BASE_URL) throw new Error('VITE_API_BASE_URL is not set.');
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/trim`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startFrame, endFrame }),
+  });
+  if (!res.ok) {
+    let detail = await res.text();
+    try { detail = JSON.parse(detail).detail ?? detail; } catch { /* keep text */ }
+    throw new Error(String(detail));
+  }
+  return res.json();
+}

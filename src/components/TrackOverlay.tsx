@@ -11,28 +11,37 @@ const PITCH_LENGTH_M = 20.12;
 export function TrackOverlay({
   sessionId,
   trajectory,
+  fullTrajectory,
+  trimRange,
+  frameIndex,
   homography,
   calibratedResult,
 }: {
   sessionId: string;
   trajectory: Pt[];
+  fullTrajectory?: Pt[];
+  trimRange?: [number, number] | null;
+  frameIndex?: number;
   homography: number[] | null;
   calibratedResult: {
     lineM: number | null; lengthM: number | null;
     bounceX: number | null; bounceY: number | null;
-    bounceConfidence: 'clear' | 'weak' | 'none';
+    bounceConfidence: 'clear' | 'weak' | 'manual' | 'none';
   } | null;
 }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [shown, setShown] = useState(trajectory.length);
+  const all = fullTrajectory && fullTrajectory.length ? fullTrajectory : trajectory;
+  const inRange = (p: Pt) => !trimRange || (p.frame >= trimRange[0] && p.frame <= trimRange[1]);
+  const pts = all.filter(inRange).sort((a, b) => a.frame - b.frame);
+  const outside = all.filter(p => !inRange(p));
+  const [shown, setShown] = useState(pts.length);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
-    setShown(trajectory.length);
-  }, [trajectory.length]);
+    setShown(pts.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pts.length]);
   useEffect(() => () => { if (timer.current) window.clearInterval(timer.current); }, []);
-
-  const pts = [...trajectory].sort((a, b) => a.frame - b.frame);
 
   function replay() {
     if (timer.current) window.clearInterval(timer.current);
@@ -111,7 +120,7 @@ export function TrackOverlay({
 
       <div className="relative mt-3 inline-block max-w-full">
         <img
-          src={getFrameUrl(sessionId)}
+          src={getFrameUrl(sessionId, frameIndex ?? 0)}
           alt="Video frame with the tracked ball path drawn on it"
           className="max-w-full rounded-sm border border-turf-700"
           onLoad={e => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
@@ -127,6 +136,10 @@ export function TrackOverlay({
                 )}
               </>
             )}
+
+            {outside.map(p => (
+              <circle key={`o${p.frame}`} cx={p.x} cy={p.y} r={W * 0.004} fill="#7C8680" fillOpacity={0.55} />
+            ))}
 
             {segments.map((seg, i) =>
               seg.length > 1 ? (
@@ -145,15 +158,15 @@ export function TrackOverlay({
             </>}
             {bounce && calibratedResult && shown >= pts.length && <>
               <circle cx={bounce.x} cy={bounce.y} r={W * 0.011} fill={weak ? 'none' : '#D9A441'} stroke={weak ? '#D9A441' : '#0D1310'} strokeWidth={W * 0.003} />
-              {label(bounce.x, bounce.y + font * 2.6, `${weak ? 'Bounce (low confidence)' : 'Bounce'}  line ${calibratedResult.lineM} m · length ${calibratedResult.lengthM} m`, true)}
+              {label(bounce.x, bounce.y + font * 2.6, `${weak ? 'Bounce (low confidence)' : calibratedResult.bounceConfidence === 'manual' ? 'Bounce (you marked)' : 'Bounce'}  line ${calibratedResult.lineM} m · length ${calibratedResult.lengthM} m`, true)}
             </>}
           </svg>
         )}
       </div>
 
       <p className="mt-3 font-mono text-xs leading-relaxed text-slateg-400">
-        Each dot is a frame where the ball was found; fainter dots are lower-confidence detections. Lines break where the
-        ball wasn't seen. A stray dot far from the path is a wrong detection, not the ball.
+        Each red dot is a frame where the ball was found; fainter dots are lower-confidence. Lines break where the ball wasn't
+        seen. Grey dots are points you trimmed away. A stray red dot far from the path is a wrong detection, not the ball.
         {pitchPolygon ? ' The green outline is the pitch as your calibration sees it. If it doesn’t sit on the real pitch, recalibrate.' : ''}
       </p>
     </div>

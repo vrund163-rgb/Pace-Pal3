@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { AlertTriangle, UploadCloud } from 'lucide-react';
-import { uploadVideo, getSessionStatus, isBackendConfigured } from '../lib/api';
+import { uploadVideo, getSessionStatus, isBackendConfigured, setBounce } from '../lib/api';
 import { CalibrationPanel } from '../components/CalibrationPanel';
 import { TrackOverlay } from '../components/TrackOverlay';
 import { SeedPicker } from '../components/SeedPicker';
+import { FramePicker } from '../components/FramePicker';
+import { TrimPanel } from '../components/TrimPanel';
 
 export default function UploadReal() {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'error'>('idle');
@@ -11,12 +13,20 @@ export default function UploadReal() {
   const [error, setError] = useState('');
   const [recalibrating, setRecalibrating] = useState(false);
   const [showSeed, setShowSeed] = useState(false);
+  const [localFile, setLocalFile] = useState<File | null>(null);
+  const [trimDraft, setTrimDraft] = useState<[number, number] | null>(null);
+  const [showTrim, setShowTrim] = useState(false);
+  const [showBounce, setShowBounce] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setStatus('uploading');
     setError('');
     setSession(null);
+    setLocalFile(file);
+    setTrimDraft(null);
+    setShowTrim(false);
+    setShowBounce(false);
     try {
       const { sessionId } = await uploadVideo(file);
       setStatus('processing');
@@ -60,12 +70,21 @@ export default function UploadReal() {
     );
   }
 
+  const tp = session?.trackingPreview;
+  const kept: any[] = tp?.trajectory ?? [];
+  const fullPts: any[] = tp?.fullTrajectory?.length ? tp.fullTrajectory : kept;
+  const fullFirst = fullPts.length ? Math.min(...fullPts.map((q: any) => q.frame)) : 0;
+  const fullLast = fullPts.length ? Math.max(...fullPts.map((q: any) => q.frame)) : 0;
+  const keptRange: [number, number] = kept.length ? [Math.min(...kept.map((q: any) => q.frame)), Math.max(...kept.map((q: any) => q.frame))] : [0, 0];
+  const trimRange: [number, number] = trimDraft ?? keptRange;
+  const overlayFrame = kept.length ? [...kept].sort((a: any, b: any) => a.frame - b.frame)[Math.floor(kept.length / 2)].frame : 0;
+
   return (
     <div className="max-w-2xl px-6 lg:px-10 py-10">
       <h1 className="font-display text-4xl font-semibold text-chalk-100">Analyze real video</h1>
       <p className="mt-2 font-body text-chalk-300">
         Upload a real clip. This calls the actual backend — metadata, quality, and ball tracking are
-        real measurements, not sample data. After tracking, you can calibrate to get line and length. Pace (km/h) isn't available from a single camera.
+        real measurements, not sample data. After tracking, you can calibrate to get line and length, plus a rough pace estimate (with a wide range).
       </p>
 
       <div className="mt-6 rounded-sm border border-dashed border-turf-600 bg-turf-900 p-8 text-center">
@@ -128,6 +147,7 @@ export default function UploadReal() {
 
           {session.trackingPreview && (session.trackingPreview.framesDetected === 0 || showSeed) && (
             <SeedPicker
+              file={localFile}
               sessionId={session.id}
               frameCount={session.videoQuality?.frameCount ?? 0}
               fps={session.videoQuality?.fps ?? 0}
@@ -159,8 +179,30 @@ export default function UploadReal() {
             <TrackOverlay
               sessionId={session.id}
               trajectory={session.trackingPreview.trajectory}
+              fullTrajectory={fullPts}
+              trimRange={showTrim ? trimRange : null}
+              frameIndex={overlayFrame}
               homography={session.calibration?.homography ?? null}
               calibratedResult={session.calibratedResult ?? null}
+            />
+          )}
+
+          {session.trackingPreview?.framesDetected > 0 && !showTrim && (
+            <button
+              onClick={() => { setTrimDraft(keptRange); setShowTrim(true); }}
+              className="font-mono text-xs text-slateg-400 underline hover:text-chalk-300"
+            >
+              Stray points on the path? Trim it
+            </button>
+          )}
+          {showTrim && fullPts.length > 6 && (
+            <TrimPanel
+              sessionId={session.id}
+              fullFirst={fullFirst}
+              fullLast={fullLast}
+              range={trimRange}
+              onRange={setTrimDraft}
+              onApplied={updated => { setSession(updated); setTrimDraft(null); }}
             />
           )}
 
@@ -196,6 +238,75 @@ export default function UploadReal() {
                 >
                   Recalibrate (re-click the 4 points)
                 </button>
+              )}
+            </div>
+          )}
+
+          {session.calibration?.homography && (
+            <div className="rounded-sm border border-turf-700 bg-turf-900 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-mono text-xs uppercase tracking-wide text-slateg-400">Pace</div>
+                {session.paceResult?.ok && (
+                  <span className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-xs text-amber-500">Rough estimate</span>
+                )}
+              </div>
+              {session.paceResult?.ok ? (
+                <>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="font-display text-4xl font-semibold text-chalk-100">≈ {session.paceResult.kmh}</span>
+                    <span className="font-mono text-sm text-slateg-400">km/h</span>
+                  </div>
+                  <div className="mt-1 font-mono text-sm text-chalk-500">
+                    Likely range: {session.paceResult.lowKmh}–{session.paceResult.highKmh} km/h
+                  </div>
+                </>
+              ) : (
+                <div className="mt-2 font-mono text-sm text-amber-500">Pace not available for this clip.</div>
+              )}
+              <p className="mt-2 font-body text-sm text-chalk-300">{session.paceResult?.note}</p>
+            </div>
+          )}
+
+          {session.calibration?.homography && session.trackingPreview?.framesDetected > 0 && (
+            <div className="space-y-2">
+              {!showBounce ? (
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={() => setShowBounce(true)}
+                    className="rounded-sm border border-turf-600 px-3 py-1.5 font-body text-sm text-chalk-300 hover:border-turf-500 hover:text-chalk-100 transition-colors"
+                  >
+                    {session.calibratedResult?.bounceConfidence === 'manual' ? 'Move the bounce point' : 'Click the bounce yourself'}
+                  </button>
+                  {session.calibratedResult?.bounceConfidence === 'manual' && (
+                    <button
+                      onClick={async () => setSession(await setBounce(session.id, { clear: true }))}
+                      className="font-mono text-xs text-slateg-400 underline hover:text-chalk-300"
+                    >
+                      Go back to the automatic bounce
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <FramePicker
+                  key="bounce"
+                  sessionId={session.id}
+                  frameCount={session.videoQuality?.frameCount ?? 0}
+                  fps={session.videoQuality?.fps ?? 0}
+                  file={localFile}
+                  title="Click where the ball bounces"
+                  steps={[
+                    'Play slowly or step through the frames until you reach the frame where the ball touches the ground.',
+                    'Zoom in, wait for the exact frame to load, then click the ball at the spot where it hits the ground.',
+                    'Press “Use this bounce”. Line, length and pace are recalculated from your point.',
+                  ]}
+                  minFrame={keptRange[0]}
+                  maxFrame={keptRange[1]}
+                  initialFrame={session.calibratedResult?.bounceFrame != null ? Math.round(session.calibratedResult.bounceFrame) : undefined}
+                  pathPoints={kept.map((q: any) => ({ frame: q.frame, x: q.x, y: q.y }))}
+                  pointHint="Click the ball where it touches the ground."
+                  actionLabel="Use this bounce"
+                  onConfirm={async pnt => { setSession(await setBounce(session.id, pnt)); setShowBounce(false); }}
+                />
               )}
             </div>
           )}
